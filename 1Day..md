@@ -125,3 +125,5 @@ let iterator = iterable[Symbol.iterator]();
 
 for (const a of iterator) console.log(a);
 ```
+
+전개 연산자도 같은 개념으로 규약되어있다.
