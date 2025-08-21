@@ -127,3 +127,70 @@ for (const a of iterator) console.log(a);
 ```
 
 전개 연산자도 같은 개념으로 규약되어있다.
+
+## map
+
+```
+const products = [
+  {
+    name: "반팔티",
+    price: 15000,
+  },
+  {
+    name: "긴팔티",
+    price: 15000,
+  },
+  {
+    name: "핸드폰케이스",
+    price: 15000,
+  },
+  {
+    name: "후드티",
+    price: 15000,
+  },
+];
+
+const map = (f, iter) => {
+  let res = [];
+  for (const a of iter) {
+    // f함수를 받아 어떤 값을 수집할건지 f함수의 위임을 한다.
+    res.push(f(a));
+  }
+  return res;
+};
+// map은 products라는 이터러블안에 있는 값에 1:1로 매핑되는 값을 수집하는 보조함수를 넣는다.
+// map은 고차함수이다. 함수를 값으로 다루면서 내가 원하는 시점에 안에서 인자로 적용하는 그런 함수이다.
+console.log(map((p) => p.name, products));
+
+let prices = [];
+for (const p of products) {
+  prices.push(p.price);
+}
+console.log(prices);
+
+```
+
+## 이터러블 프로토콜을 따른 map의 다형성
+
+```
+console.log([1, 2, 3].map((a) => a + 1));
+
+console.log(map(el => el.nodeName, document.querySelectorAll("*")));
+
+function* gen() {
+  yield 2;
+  yield 3;
+  yield 4;
+}
+
+console.log(map((a) => a * a, gen()));
+
+let m = new Map();
+
+m.set("a", 10);
+m.set("b", 20);
+
+console.log(map(([key, value]) => [key, value * 2], m));
+console.log(new Map(map(([key, value]) => [key, value * 2], m)));
+
+```
