@@ -194,3 +194,70 @@ console.log(map(([key, value]) => [key, value * 2], m));
 console.log(new Map(map(([key, value]) => [key, value * 2], m)));
 
 ```
+
+## filter
+
+```
+let under20000 = [];
+
+// for (const p of products) {
+//   if (p.price < 20000) under20000.push(p);
+// }
+
+const filter = (f, iter) => {
+  const res = [];
+
+  for (const a of iter) {
+    if (f(a)) res.push(a);
+  }
+  return res;
+};
+```
+
+## reduce - 값을 축약하는 함수
+
+```
+const nums = [1, 2, 3, 4, 5];
+let total = 0;
+
+for (const n of nums) {
+  total = total + n;
+}
+
+const reduce = (f, acc, iter) => {
+  // 초기값이 없으면 첫 번째 값을 초기값으로 사용 ex - reduce(add, nums)
+  if (!iter) {
+    iter = acc[Symbol.iterator]();
+    acc = iter.next().value;
+  }
+  for (const a of iter) {
+    acc = f(acc, a);
+  }
+
+  return acc;
+};
+
+const add = (a, b) => a + b;
+
+console.log(
+  reduce((total_price, products) => total_price + products.price, 0, products)
+);
+
+```
+
+```
+// map + filter + reduce 중첩 사용과 함수형 사고
+console.log(
+  reduce(
+    add,
+    map(
+      (p) => p.price,
+      filter((p) => p.price < 20000, products)
+    )
+  )
+);
+// 함수형 사고에서는 log, reduce, add까지는 자연스럽게 이어서 작성할 수 있고, 이어서 reduce가 숫자 배열을 입력으로 받아야 한다는 점을 인식하며, 그 배열을 만들기 위한 filter와 map 과정을 평가·조합해 코드를 작성한다.
+
+```
+
+## 코드를 값으로 다루어 표현력 높이기
