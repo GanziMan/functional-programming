@@ -166,3 +166,59 @@ go(range(10000), take(5), reduce(add), log);
 
 go(L.range(10000), take(5), reduce(add), log);
 ```
+
+### 이터러블 중심 프로그래밍에서의 지연 평가 (Lazy Evaluation)
+
+- 제때 계산법
+- 느긋한 계산법
+- 제너레이터이터레이터 프로토콜을 기반으로 구현
+
+```
+L.map = function* (fn, iter) {
+  for (const a of iter) yield fn(a);
+};
+
+const it = L.map(a => a + 10, [1,2,3])
+
+log(it.next()); // 원하는 값만 계산하고 싶을 떄, 제때 계산법
+```
+
+```
+L.filter = function* (fn, iter){
+  for (const a of iter) if(fn(a)) yield a;
+}
+
+const it = L.filter(a => a % 2 , [1, 2, 3, 4]);
+
+log(it.next());
+log(it.next());
+log(it.next());
+log(it.next());
+```
+
+### L.map
+
+```
+L.map = curry(function* (fn, iter) {
+  iter = iter[Symbol.iterator]();
+  let cur;
+  while (!(cur = iter.next()).done) {
+    const a = cur.value;
+    yield fn(a);
+  }
+  // for (const a of iter) yield fn(a);
+});
+```
+
+### L.filter
+
+```
+L.filter = curry(function* (fn, iter) {
+  iter = iter[Symbol.iterator]();
+  let cur;
+  while (!(cur = iter.next()).done) {
+    const a = cur.value;
+    if (fn(a)) yield a;
+  }
+});
+```
