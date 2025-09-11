@@ -93,7 +93,7 @@ const products = [
 ];
 
 // sum은 추상화 레벨이 높아진 함수
-const sum = curry((f, iter) => go(iter, map(f), reduce(add)));
+const sum = curry((f, iter) => go(iter,  (f), reduce(add)));
 const total_quantity = sum((product) => product.quantity);
 
 const total_price = sum((product) => product.price * product.quantity);
