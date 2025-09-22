@@ -20,7 +20,6 @@ var list = range(4);
 // list 자체는 배열이 아니라 이터레이터 객체
 const L = {};
 L.range = function* (l) {
-  console.log("2");
   let i = -1;
   while (++i < l) {
     yield i;
@@ -40,7 +39,6 @@ function test(name, time, f) {
 
 // take - 이터러블에서 원하는 길이만큼의 값을 가져오는 함수
 const take = curry((l, iter) => {
-  console.log("1");
   let res = [];
   iter = iter[Symbol.iterator]();
   let cur;
@@ -92,4 +90,21 @@ const queryStr = pipe(
   join("&")
 );
 
-log(queryStr({ limit: 10, offset: 20, type: "notice" })); // limit=10&offset=20&type=notice
+const isIterable = (a) => a && a[Symbol.iterator];
+
+L.flatten = function* (iter) {
+  for (const a of iter) {
+    if (isIterable(a)) yield* a;
+    else yield a;
+  }
+};
+
+L.deepFlat = function* f(iter) {
+  for (const a of iter) {
+    if (isIterable(a)) yield* L.deepFlat(a);
+    else yield a;
+  }
+};
+
+L.flatMap = curry(pipe(L.map, L.flatten));
+const flatMap = curry(pipe(L.map, L.flatten));
