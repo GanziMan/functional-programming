@@ -40,6 +40,8 @@ export const filter = curry((f, iter) => {
   return res;
 });
 
+export const go1 = (a, f) => (a instanceof Promise ? a.then(f) : f(a));
+
 export const reduce = curry((f, acc, iter) => {
   // 초기값이 없으면 첫 번째 값을 초기값으로 사용 ex - reduce(add, nums)
   if (!iter) {
@@ -48,15 +50,31 @@ export const reduce = curry((f, acc, iter) => {
   } else {
     iter = iter[Symbol.iterator]();
   }
-  iter = iter[Symbol.iterator]();
-  let cur;
 
-  while (!(cur = iter.next()).done) {
-    const a = cur.value;
-    acc = f(acc, a);
+  // 해당 로직은 promise에서 then은 새로운 Promise를 반환하기 때문에 불필요한 로드가 생겨 성능 저하가 생긴다.
+  // let cur;
+
+  // while (!(cur = iter.next()).done) {
+  //   const a = cur.value;
+  //   // acc = f(acc, a);
+  //   acc = acc instanceof Promise ? acc.then((acc) => f(acc, a)) : f(acc, a);
+  // }
+
+  // return acc;
+
+  // 유명함수: 함수에 이름을 붙여서 재귀를 구현하는 방법
+
+  function recur(acc) {
+    let cur;
+    while (!(cur = iter.next()).done) {
+      const a = cur.value;
+      acc = f(acc, a);
+      if (acc instanceof Promise) return acc.then(recur);
+    }
+    return acc;
   }
 
-  return acc;
+  return go1(acc, recur);
 });
 
 export const map = curry((f, iter) => {
