@@ -41,13 +41,21 @@ function test(name, time, f) {
 const take = curry((l, iter) => {
   let res = [];
   iter = iter[Symbol.iterator]();
-  let cur;
-  while (!(cur = iter.next()).done) {
-    const a = cur.value;
-    res.push(a);
-    if (res.length === l) return res;
-  }
-  return res;
+
+  return (function recur() {
+    let cur;
+    while (!(cur = iter.next()).done) {
+      const a = cur.value;
+      if (a instanceof Promise) {
+        return a
+          .then((a) => ((res.push(a), res).length === l ? res : recur()))
+          .catch((error) => (error === nop ? recur() : Promise.reject(error)));
+      }
+      res.push(a);
+      if (res.length === l) return res;
+    }
+    return res;
+  })();
 });
 
 // 이터러블 중심 프로그래밍에서의 지연 평가 (Lazy Evaluation)
@@ -55,24 +63,30 @@ const take = curry((l, iter) => {
 // - 느긋한 계산법
 // - 제너레이터이터레이터 프로토콜을 기반으로 구현
 
+const go1 = (a, f) => (a instanceof Promise ? a.then(f) : f(a));
+
 // L.map
 L.map = curry(function* (fn, iter) {
-  iter = iter[Symbol.iterator]();
-  let cur;
-  while (!(cur = iter.next()).done) {
-    const a = cur.value;
-    yield fn(a);
+  // iter = iter[Symbol.iterator]();
+  // let cur;
+  // while (!(cur = iter.next()).done) {
+  //   const a = cur.value;
+  //   yield go1(a, fn);
+  // }
+  for (const a of iter) {
+    yield go1(a, fn);
   }
-  // for (const a of iter) yield fn(a);
 });
 
+const nop = Symbol("nop");
 // L.filter
 L.filter = curry(function* (fn, iter) {
-  iter = iter[Symbol.iterator]();
-  let cur;
-  while (!(cur = iter.next()).done) {
-    const a = cur.value;
-    if (fn(a)) yield a;
+  for (const a of iter) {
+    const b = go1(a, fn);
+    log(b);
+    if (b instanceof Promise)
+      yield b.then((b) => (b ? a : Promise.reject(nop)));
+    else if (b) yield a;
   }
 });
 
@@ -108,3 +122,36 @@ L.deepFlat = function* f(iter) {
 
 L.flatMap = curry(pipe(L.map, L.flatten));
 const flatMap = curry(pipe(L.map, L.flatten));
+
+// --------------------------------------------------------------
+function add10(a, callback) {
+  setTimeout(() => callback(a + 10), 1000);
+}
+
+function add20(a) {
+  return new Promise((resolove) => setTimeout(() => resolove(a + 20), 1000));
+}
+
+const delay100 = (a) =>
+  new Promise((resolve) => setTimeout(() => resolve(a), 100));
+
+const add5 = (a) => a + 5;
+
+// go1(go1(10, add5), log);
+
+// go1(go1(delay100(10), add5), log);
+
+// go(
+//   Promise.resolve(1),
+//   (a) => a + 1,
+//   (a) => Promise.reject("error~"),
+//   log
+// ).catch(log);
+
+go(
+  [1, 2, 3, 4, 5],
+  L.map((a) => Promise.resolve(a * a)),
+  L.filter((a) => Promise.resolve(a % 2)),
+  reduce(add),
+  log
+);
