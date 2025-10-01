@@ -73,3 +73,34 @@ new Promise((resolve) => setTimeout(() => resolve(3), 1000))
 
 즉, **“출력 타입이 모나드 안에 싸여 있을 때 안전하게 합성하는 방식”**이 Kleisli composition
 Kleisli 합성은 오류가 발생할 수 있는 상황에서 함수들을 안전하게 합성하는 규칙을 다룹니다. Promise는 `.then()` 체인 중 발생한 오류를 `.catch()`로 잡아내어 전체 합성 과정이 예측 불가능하게 깨지는 것을 방지하며 안전한 흐름 제어를 돕습니다.
+
+### 비동기 필터링 처리에서 'NOP'와 같은 특별한 값을 사용하는 주된 목적
+
+'NOP'는 필터 함수에서 false와 같은 역할을 하지만, Promise를 거부(reject)할 때 발생하는 에러 로깅 없이 해당 값이 이후의 함수 파이프라인을 더 이상 진행하지 않도록 막는 일종의 신호 역할을 합니다.
+
+### async/await
+
+- `async` 함수는 항상 `Promise`를 반환한다. (단순 값 반환도 자동으로 `Promise.resolve()`로 감싸짐)
+- 함수 내부 코드는 `await`를 만나기 전까지는 동기적으로 실행된다.
+- `await`는 Promise가 **해결(fulfilled)** 될 때까지 기다린 뒤, 결과 값을 반환한다.
+- await가 Promise를 평가한다. (Promise의 결과를 await로 꺼내볼 수 있다.)
+- Promise가 아닌 값도 `await`하면 `Promise.resolve()`로 처리되어 바로 반환된다.
+
+```
+function delay(time) {
+  return new Promise((resolve) => setTimeout(() => resolve(), time));
+}
+
+async function delayIdentity(a) {
+  await delay(a);
+  return a;
+}
+
+async function f1() {
+  const a = await delayIdentity(10);
+  const b = await delayIdentity(20);
+  return a + b;
+}
+log(f1()); // Promise { <pending> }
+f1().then(log); // 30
+```
