@@ -1,19 +1,20 @@
-import { go, filter, map, reduce, log, add, curry, pipe } from "./fx.js";
+import {
+  go,
+  filter,
+  map,
+  reduce,
+  log,
+  add,
+  curry,
+  pipe,
+  nop,
+  go1,
+  take,
+  range,
+  noop,
+} from "./fx.js";
 
 // 동작 방식이 핵심차이 (즉시평가 vs 느긋한 평가)
-
-// 호출 즉시 모든 요소를 한 번에 배열에 담아 반환
-const range = (l) => {
-  let i = -1;
-  const res = [];
-
-  while (++i < l) {
-    res.push(i);
-  }
-  return res;
-};
-
-var list = range(4);
 
 // ## 느긋한 L.range
 // 배열을 미리 만들지 않고, 값이 필요할 때마다 하나씩 생성(yield)
@@ -37,33 +38,10 @@ function test(name, time, f) {
 // test("range", 10, () => reduce(add, range(1000000)));
 // test("L.range", 10, () => reduce(add, L.range(1000000)));
 
-// take - 이터러블에서 원하는 길이만큼의 값을 가져오는 함수
-const take = curry((l, iter) => {
-  let res = [];
-  iter = iter[Symbol.iterator]();
-
-  return (function recur() {
-    let cur;
-    while (!(cur = iter.next()).done) {
-      const a = cur.value;
-      if (a instanceof Promise) {
-        return a
-          .then((a) => ((res.push(a), res).length === l ? res : recur()))
-          .catch((error) => (error === nop ? recur() : Promise.reject(error)));
-      }
-      res.push(a);
-      if (res.length === l) return res;
-    }
-    return res;
-  })();
-});
-
 // 이터러블 중심 프로그래밍에서의 지연 평가 (Lazy Evaluation)
 // - 제때 계산법
 // - 느긋한 계산법
 // - 제너레이터이터레이터 프로토콜을 기반으로 구현
-
-const go1 = (a, f) => (a instanceof Promise ? a.then(f) : f(a));
 
 // L.map
 L.map = curry(function* (fn, iter) {
@@ -78,12 +56,11 @@ L.map = curry(function* (fn, iter) {
   }
 });
 
-const nop = Symbol("nop");
 // L.filter
 L.filter = curry(function* (fn, iter) {
   for (const a of iter) {
     const b = go1(a, fn);
-    log(b);
+
     if (b instanceof Promise)
       yield b.then((b) => (b ? a : Promise.reject(nop)));
     else if (b) yield a;
@@ -137,21 +114,57 @@ const delay100 = (a) =>
 
 const add5 = (a) => a + 5;
 
-// go1(go1(10, add5), log);
-
-// go1(go1(delay100(10), add5), log);
-
 // go(
-//   Promise.resolve(1),
-//   (a) => a + 1,
-//   (a) => Promise.reject("error~"),
+//   [1, 2, 3, 4, 5],
+//   L.map((a) => Promise.resolve(a * a)),
+//   L.filter((a) => Promise.resolve(a % 2)),
+//   reduce(add),
 //   log
-// ).catch(log);
+// );
+
+const C = {};
+
+const catchNoop = (arr) => (
+  arr.forEach((a) => (a instanceof Promise ? a.catch(noop) : a)), arr
+);
+C.take = curry((l, iter) => take(l, catchNoop([...iter])));
+C.reduce = curry((f, acc, iter) => {
+  const iter2 = iter ? [...iter] : [...acc];
+  iter2.forEach((a) => a.catch(noop));
+  return iter ? reduce(f, acc, iter2) : reduce(f, iter2);
+});
+C.takeAll = C.take(Infinity);
+C.map = curry(pipe(L.map, C.takeAll));
+C.filter = curry(pipe(L.filter, C.takeAll));
+
+// 지연된 함수열을 병렬적으로 평가하기 - C.reduce, C.take
+const delay500 = (a, name) =>
+  new Promise((resolve) => {
+    log(`${name}: ${a}`);
+    setTimeout(() => resolve(a), 500);
+  });
 
 go(
   [1, 2, 3, 4, 5],
-  L.map((a) => Promise.resolve(a * a)),
-  L.filter((a) => Promise.resolve(a % 2)),
+  L.map((a) => delay1000(a * a)),
+  L.filter((a) => delay1000(a % 2)),
+  L.map((a) => delay1000(a * a)),
   reduce(add),
   log
 );
+
+map((a) => delay1000(a * a), [1, 2, 3, 4, 5]).then(log);
+filter((a) => delay1000(a % 2), [1, 2, 3, 4, 5]).then(log);
+C.map((a) => delay1000(a * a), [1, 2, 3, 4, 5]);
+C.filter((a) => delay1000(a % 2), [1, 2, 3, 4, 5]);
+console.time(""),
+  go(
+    [1, 2, 3, 4, 5, 6, 7, 8],
+    L.map((a) => delay500(a * a, "map1")),
+    L.filter((a) => delay500(a % 2, "filter1")),
+    L.map((a) => delay500(a + 1, "map3")),
+    take(4),
+    // reduce(add),
+    log,
+    (_) => console.timeEnd("")
+  );

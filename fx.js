@@ -1,21 +1,4 @@
-export const products = [
-  {
-    name: "반팔티",
-    price: 15000,
-  },
-  {
-    name: "긴팔티",
-    price: 15000,
-  },
-  {
-    name: "핸드폰케이스",
-    price: 15000,
-  },
-  {
-    name: "후드티",
-    price: 20000,
-  },
-];
+export const nop = Symbol("nop");
 
 export const curry =
   (f) =>
@@ -40,9 +23,8 @@ export const filter = curry((f, iter) => {
   return res;
 });
 
+// go1 - 값이 Promise인지 확인하고 실행
 export const go1 = (a, f) => (a instanceof Promise ? a.then(f) : f(a));
-
-const nop = Symbol("nop");
 
 const reduceF = (acc, a, f) =>
   a instanceof Promise
@@ -51,6 +33,8 @@ const reduceF = (acc, a, f) =>
         (error) => (error === nop ? acc : Promise.reject(error))
       )
     : f(acc, a);
+
+const head = () => go1;
 
 export const reduce = curry((f, acc, iter) => {
   // 초기값이 없으면 첫 번째 값을 초기값으로 사용 ex - reduce(add, nums)
@@ -98,6 +82,37 @@ export const map = curry((f, iter) => {
   return res;
 });
 
+// 호출 즉시 모든 요소를 한 번에 배열에 담아 반환
+export const range = (l) => {
+  let i = -1;
+  const res = [];
+
+  while (++i < l) {
+    res.push(i);
+  }
+  return res;
+};
+
+// take - 이터러블에서 원하는 길이만큼의 값을 가져오는 함수
+export const take = curry((l, iter) => {
+  let res = [];
+  iter = iter[Symbol.iterator]();
+
+  return (function recur() {
+    let cur;
+    while (!(cur = iter.next()).done) {
+      const a = cur.value;
+      if (a instanceof Promise) {
+        return a
+          .then((a) => ((res.push(a), res).length === l ? res : recur()))
+          .catch((error) => (error === nop ? recur() : Promise.reject(error)));
+      }
+      res.push(a);
+      if (res.length === l) return res;
+    }
+    return res;
+  })();
+});
 export const add = (a, b) => a + b;
 
 export const mult = curry((a, b, c, d) => a * b * c * d);
@@ -108,3 +123,5 @@ export const pipe =
   (f, ...fs) =>
   (...as) =>
     go(f(...as), ...fs);
+
+export function noop() {}
