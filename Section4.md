@@ -104,3 +104,44 @@ async function f1() {
 log(f1()); // Promise { <pending> }
 f1().then(log); // 30
 ```
+
+### 파이프라인은 함수를 합성하는 것이 목적.
+
+Async/Await는 완전히 합성이 아니라 풀어놓으려고 하는 목적을 가지고 있는 것.
+둘은 비교대상이 아니라 서로 다른 문제를 해결하고자 하는 두개의 기술
+pipe: 어떠한 코드를 리스트로 다루면서 연속적인 함수 실행과 함수 합성을 통해서 이제 더 효과적으로 함수들을 조합하고 또 로직을 테스트하기 쉽고 유지 보수하기 쉽게 만드는 데 목적
+async/await: 비동기 상황을 동기적인 문장으로 풀어서 코딩을 하고 싶을 때 사용하는 기법
+
+```
+function f5(list) {
+  return go(
+    list,
+    L.map((a) => delayI(a * a)),
+    L.filter((a) => delayI(a % 2)),
+    L.map((a) => delayI(a + 1)),
+    take(3),
+    reduce(add)
+  );
+}
+// 복잡한 포문과 if문과 포문을 빠져나가는 로직이나 이런거를 쉽고 안전하게 코딩하기 위함
+
+
+async function f6(list) {
+  const temp = [];
+  for (const a of list) {
+    const b = await delayI(a * a);
+    if (await delayI(b % 2)) {
+      const c = await delayI(b + 1);
+      temp.push(c);
+      if (temp.length === 3) break;
+    }
+  }
+  let res = temp[0],
+    i = 0;
+  while (++i < temp.length) res = await delayI(res + temp[i]);
+
+  return res;
+}
+```
+
+- 두 구현은 결과와 점근적 시간복잡도는 동일합니다. 그러나 f5는 지연 평가 기반의 선언적 파이프(L.map → L.filter → take → reduce)로 구성되어 있어 로직 변경 시 수정 반경이 작고(모듈성), take에서 조기 단락이 자연스럽게 보장됩니다. 반면 f6는 루프·조건·중단·누산이 서로 얽혀 있어 변경 비용과 결합도가 큼

@@ -113,15 +113,6 @@ const delay100 = (a) =>
   new Promise((resolve) => setTimeout(() => resolve(a), 100));
 
 const add5 = (a) => a + 5;
-
-// go(
-//   [1, 2, 3, 4, 5],
-//   L.map((a) => Promise.resolve(a * a)),
-//   L.filter((a) => Promise.resolve(a % 2)),
-//   reduce(add),
-//   log
-// );
-
 const C = {};
 
 const catchNoop = (arr) => (
@@ -142,6 +133,17 @@ const delay500 = (a, name) =>
   new Promise((resolve) => {
     log(`${name}: ${a}`);
     setTimeout(() => resolve(a), 500);
+  });
+
+const delay1000 = (a, name) =>
+  new Promise((resolve) => {
+    log(`${name}: ${a}`);
+    setTimeout(() => resolve(a), 1000);
+  });
+
+const delayI = (a) =>
+  new Promise((resolve) => {
+    setTimeout(() => resolve(a), 100);
   });
 
 go(
